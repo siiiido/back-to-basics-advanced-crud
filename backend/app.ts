@@ -2,7 +2,6 @@ import express from 'express'
 import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import bodyParser from 'body-parser'
-import HttpError from './models/http-error'
 import { Request, Response, NextFunction } from 'express'
 
 dotenv.config()
@@ -12,7 +11,7 @@ const app = express()
 app.use(bodyParser.json())
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const error = HttpError('Could not find this route', 404)
+  const error = res.status(404).json({ message: 'Could not find this route' })
   throw error
 })
 
