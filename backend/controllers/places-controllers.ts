@@ -70,8 +70,71 @@ const getPlacesByUserId = async (
 }
 
 const createPlace = async (req: Request, res: Response, next: NextFunction) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    const err = res
+      .status(422)
+      .json({ message: 'Invalid inputs passed, please check your data.' })
+
+    return next(err)
+  }
+
+  const { title, description, address } = req.body
+
+  let coordinates
+
   try {
-  } catch (error) {}
+    coordinates = await getCoordsForAddress(address)
+  } catch (error) {
+    return next(error)
+  }
+
+  const createdPlace = new Place({
+    title,
+    description,
+    address,
+    location: coordinates,
+    image: req.file.path,
+    creator: req.userData.userId,
+  })
+
+  let user
+  try {
+    user = await User.findById(req.userData.userId)
+  } catch (error) {
+    const err = res
+      .status(500)
+      .json({ msaage: 'Creating place failed, please try again.' })
+
+    return next(err)
+  }
+
+  if (!user) {
+    const err = res
+      .status(404)
+      .json({ message: 'Could not find user for provided id.' })
+
+    return next(err)
+  }
+
+  console.log(user, 'user')
+
+  try {
+    const sess = await mongoose.startSession()
+    sess.startTransaction()
+    await createdPlace.save({ session: sess })
+    user.places.push(createdPlace)
+    await user.save({ session: sess })
+    await sess.commitTransaction()
+  } catch (error) {
+    const err = res
+      .status(500)
+      .json({ message: ' Creating place failed, please try again.' })
+
+    return next(err)
+  }
+
+  res.status(201).json({ place: createdPlace })
 }
 
 const updatePlace = async (req: Request, res: Response, next: NextFunction) => {
@@ -79,10 +142,11 @@ const updatePlace = async (req: Request, res: Response, next: NextFunction) => {
   } catch (error) {}
 }
 
-const deletePlace = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-  } catch (error) {}
-}
+const deletePlace = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {}
 
 export {
   getPlaceById,
